@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/realtime-games.css') }}">
+{% endblock %}
+{% block content %}
+<div class="game-shell" data-game-page data-game-slug="{{ game.slug }}" data-supports-cashout="false">
+    <div class="game-hero theme-dice">
+        <div>
+            <p class="eyebrow">Realtime Multiplayer</p>
+            <h1>{{ game.title }}</h1>
+            <p class="hero-copy">{{ game.tagline }}</p>
+        </div>
+        <div class="hero-metrics">
+            <div class="metric-box"><span>Phase</span><strong id="phase-label">{{ snapshot.phase }}</strong></div>
+            <div class="metric-box"><span>Wallet</span><strong id="wallet-balance">{{ snapshot.wallet_balance }}</strong></div>
+            <div class="metric-box"><span>Players</span><strong id="player-count">{{ snapshot.player_count or 0 }}</strong></div>
+        </div>
+    </div>
+
+    <div class="game-layout">
+        <section class="panel visual-panel">
+            <div class="panel-header">
+                <h2>Dice Arena</h2>
+                <div class="status-text" id="status-text">{{ snapshot.state.status_text or 'Roll incoming' }}</div>
+            </div>
+            <div class="dice-board">
+                <div class="die" id="die-one">1</div>
+                <div class="die" id="die-two">1</div>
+            </div>
+            <div class="timer-row">
+                <div><span>Countdown</span><strong id="countdown">-</strong></div>
+                <div><span>Winning Side</span><strong id="primary-result">{{ snapshot.state.sum or 'Pending' }}</strong></div>
+            </div>
+            <div class="secondary-result" id="secondary-result">Low: 2-6 | High: 8-12 | 7 means house wins</div>
+        </section>
+
+        <section class="panel bet-panel">
+            <div class="panel-header">
+                <h2>Choose Your Side</h2>
+                <p>Predict whether the final total lands on high or low.</p>
+            </div>
+            <form id="bet-form" class="bet-form">
+                <label>Bet Amount</label>
+                <input type="number" name="amount" min="1" value="50" required>
+                <label>Side</label>
+                <select name="choice">
+                    <option value="low">Low (2-6)</option>
+                    <option value="high">High (8-12)</option>
+                </select>
+                <button type="submit" class="btn btn-warning w-100">Place Dice Bet</button>
+            </form>
+            <div id="action-message" class="action-message"></div>
+        </section>
+    </div>
+
+    <div class="lower-grid">
+        <section class="panel">
+            <div class="panel-header"><h2>Players In Round</h2></div>
+            <div id="players-list" class="player-list"></div>
+        </section>
+        <section class="panel">
+            <div class="panel-header"><h2>Your Recent Results</h2></div>
+            <div id="my-history" class="history-list" data-history='{{ my_history|tojson|safe }}'></div>
+        </section>
+        <section class="panel">
+            <div class="panel-header"><h2>Global Feed</h2></div>
+            <div id="recent-history" class="history-list" data-history='{{ recent_history|tojson|safe }}'></div>
+        </section>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+window.GAME_PAGE_CONFIG = {
+    slug: "{{ game.slug }}",
+    title: "{{ game.title }}",
+    supportsCashout: false,
+    initialState: {{ snapshot|tojson|safe }}
+};
+</script>
+<script src="{{ url_for('static', filename='js/realtime_game.js') }}"></script>
+{% endblock %}
