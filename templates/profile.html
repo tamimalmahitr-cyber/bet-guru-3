@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card p-4 mb-4">
+            <div class="text-center mb-4">
+                <div style="font-size: 64px;">👤</div>
+                <h3 class="fw-bold mt-2">{{ username }}</h3>
+                <div class="balance-display d-inline-block mt-1">${{ balance }}</div>
+            </div>
+
+            <!-- Stats Row -->
+            <div class="row text-center mb-4">
+                <div class="col-4">
+                    <div class="card p-3" style="background:#0f172a;">
+                        <div class="h4 text-warning mb-0">{{ total_games }}</div>
+                        <small class="text-muted">Games Played</small>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="card p-3" style="background:#0f172a;">
+                        <div class="h4 text-success mb-0">{{ total_won }}</div>
+                        <small class="text-muted">Wins</small>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="card p-3" style="background:#0f172a;">
+                        <div class="h4 text-info mb-0">${{ total_earnings or 0 }}</div>
+                        <small class="text-muted">Total Earned</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Profile Form -->
+            <h6 class="text-warning mb-3"><i class="fas fa-edit me-2"></i>Edit Profile</h6>
+            <form method="POST">
+                <div class="mb-3">
+                    <label class="form-label text-muted">Email Address</label>
+                    <input type="email" name="email" class="form-control" value="{{ email }}" placeholder="your@email.com">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-muted">Phone Number</label>
+                    <input type="text" name="phone" class="form-control" value="{{ phone }}" placeholder="+880 1XXXXXXXXX">
+                </div>
+                <button type="submit" class="btn btn-warning w-100">Save Changes</button>
+            </form>
+        </div>
+
+        <div class="d-flex gap-2">
+            <a href="/history" class="btn btn-outline-secondary flex-fill">Transaction History</a>
+            <a href="/games" class="btn btn-warning flex-fill">Play Games</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Users</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: #c9d1d9; margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: auto; background: #161b22; padding: 25px; border-radius: 10px; border: 1px solid #30363d; }
+        h2 { color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 13px 15px; text-align: left; border-bottom: 1px solid #30363d; }
+        th { background: #21262d; color: #58a6ff; font-size: 13px; text-transform: uppercase; }
+        tr:hover td { background: #1c2128; }
+        .btn { padding: 6px 14px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 13px; display: inline-block; }
+        .btn-blue { background: #1f6feb; color: white; }
+        .btn-blue:hover { background: #388bfd; }
+        .btn-back { background: #21262d; color: #58a6ff; margin-bottom: 15px; display: inline-block; padding: 8px 16px; border-radius: 6px; text-decoration: none; }
+        .balance { color: #3fb950; font-weight: bold; }
+        .search-box { background: #21262d; border: 1px solid #30363d; color: #c9d1d9; padding: 8px 14px; border-radius: 6px; width: 280px; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <a href="/admin" class="btn-back">← Admin Panel</a>
+    <h2>👥 All Users ({{ users|length }})</h2>
+    <input class="search-box" type="text" id="searchInput" placeholder="Search username..." onkeyup="filterTable()">
+    <table id="userTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Balance</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for u in users %}
+            <tr>
+                <td>#{{ u[0] }}</td>
+                <td><strong>{{ u[1] }}</strong></td>
+                <td>{{ u[2] or '—' }}</td>
+                <td>{{ u[3] or '—' }}</td>
+                <td class="balance">${{ u[4] }}</td>
+                <td><a href="/admin/user/{{ u[0] }}" class="btn btn-blue">Full Access →</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<script>
+function filterTable() {
+    const q = document.getElementById("searchInput").value.toLowerCase();
+    document.querySelectorAll("#userTable tbody tr").forEach(row => {
+        row.style.display = row.cells[1].textContent.toLowerCase().includes(q) ? "" : "none";
+    });
+}
+</script>
+</body>
+</html>

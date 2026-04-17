@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - User Detail</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: #c9d1d9; margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: auto; }
+        .card { background: #161b22; padding: 22px; border-radius: 10px; border: 1px solid #30363d; margin-bottom: 20px; }
+        h2 { color: #58a6ff; margin-top: 0; }
+        h4 { color: #e6edf3; border-bottom: 1px solid #30363d; padding-bottom: 8px; }
+        label { color: #8b949e; font-size: 13px; display: block; margin-bottom: 4px; margin-top: 12px; }
+        input { background: #21262d; border: 1px solid #30363d; color: #c9d1d9; padding: 8px 12px; border-radius: 6px; width: 100%; box-sizing: border-box; }
+        input:focus { outline: none; border-color: #58a6ff; }
+        .btn { padding: 9px 18px; border-radius: 6px; font-weight: bold; font-size: 14px; border: none; cursor: pointer; text-decoration: none; display: inline-block; }
+        .btn-green { background: #238636; color: white; }
+        .btn-green:hover { background: #2ea043; }
+        .btn-red { background: #da3633; color: white; }
+        .btn-red:hover { background: #f85149; }
+        .btn-blue { background: #1f6feb; color: white; }
+        .btn-back { background: #21262d; color: #58a6ff; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 11px 14px; text-align: left; border-bottom: 1px solid #21262d; font-size: 14px; }
+        th { background: #21262d; color: #58a6ff; font-size: 12px; text-transform: uppercase; }
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; }
+        .badge-green { background: #238636; color: white; }
+        .badge-red { background: #da3633; color: white; }
+        .badge-yellow { background: #9e6a03; color: white; }
+        .badge-blue { background: #1f6feb; color: white; }
+        .stat { text-align: center; background: #0d1117; padding: 14px; border-radius: 8px; }
+        .stat .val { font-size: 1.6rem; font-weight: bold; color: #f59e0b; }
+        .row { display: flex; gap: 16px; }
+        .col { flex: 1; }
+        .alert { background: #da363320; border: 1px solid #da3633; color: #f85149; padding: 10px 14px; border-radius: 6px; margin-bottom: 12px; font-size: 13px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <a href="/admin/users" class="btn btn-back" style="margin-bottom:16px;">← All Users</a>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}{% for cat, msg in messages %}
+            <div class="alert">{{ msg }}</div>
+        {% endfor %}{% endif %}
+    {% endwith %}
+
+    <!-- Header -->
+    <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <h2 style="margin:0;">👤 {{ user[1] }} <small style="font-size:14px; color:#8b949e;">#{{ user[0] }}</small></h2>
+                <p style="color:#8b949e; margin:4px 0 0;">{{ user[2] or 'No email' }} &nbsp;|&nbsp; {{ user[3] or 'No phone' }}</p>
+            </div>
+            <div style="font-size:2rem; font-weight:bold; color:#3fb950;">${{ user[4] }}</div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Edit Balance -->
+        <div class="col">
+            <div class="card">
+                <h4>💰 Edit Balance</h4>
+                <form method="POST">
+                    <input type="hidden" name="action" value="update_balance">
+                    <label>New Balance ($)</label>
+                    <input type="number" name="balance" value="{{ user[4] }}" min="0" required>
+                    <button type="submit" class="btn btn-green" style="margin-top:14px; width:100%;">Update Balance</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Edit Info -->
+        <div class="col">
+            <div class="card">
+                <h4>✏️ Edit Info</h4>
+                <form method="POST">
+                    <input type="hidden" name="action" value="update_info">
+                    <label>Email</label>
+                    <input type="email" name="email" value="{{ user[2] }}">
+                    <label>Phone</label>
+                    <input type="text" name="phone" value="{{ user[3] }}">
+                    <label>New Password (leave blank to keep)</label>
+                    <input type="text" name="password" placeholder="Enter new password">
+                    <button type="submit" class="btn btn-blue" style="margin-top:14px; width:100%;">Save Info</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction History -->
+    <div class="card">
+        <h4>📋 Transaction History ({{ transactions|length }})</h4>
+        {% if transactions %}
+        <table>
+            <thead><tr><th>#</th><th>Type</th><th>Amount</th><th>Status</th><th>Time</th></tr></thead>
+            <tbody>
+            {% for t in transactions %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td><span class="badge {% if t[0]=='deposit' %}badge-green{% else %}badge-red{% endif %}">{{ t[0] }}</span></td>
+                <td>${{ t[1] }}</td>
+                <td><span class="badge {% if t[2]=='Approved' %}badge-green{% elif t[2]=='Rejected' %}badge-red{% else %}badge-yellow{% endif %}">{{ t[2] }}</span></td>
+                <td style="color:#8b949e; font-size:13px;">{{ t[3].strftime('%Y-%m-%d %H:%M') if t[3] else '—' }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="color:#8b949e; text-align:center; padding:20px;">No transactions found.</p>
+        {% endif %}
+    </div>
+
+    <!-- Game History -->
+    <div class="card">
+        <h4>🎮 Game History ({{ game_history|length }})</h4>
+        {% if game_history %}
+        <table>
+            <thead><tr><th>Game</th><th>Bet</th><th>Choice</th><th>Result</th><th>Payout</th><th>Game Result</th><th>Time</th></tr></thead>
+            <tbody>
+            {% for g in game_history %}
+            <tr>
+                <td class="text-capitalize">{{ g[0] }}</td>
+                <td>${{ g[1] }}</td>
+                <td>{{ g[2] or '—' }}</td>
+                <td><span class="badge {% if g[3]=='won' %}badge-green{% elif g[3]=='lost' %}badge-red{% else %}badge-yellow{% endif %}">{{ g[3] }}</span></td>
+                <td style="color: {% if g[4] > 0 %}#3fb950{% else %}#f85149{% endif %};">
+                    {% if g[4] > 0 %}+${{ g[4] }}{% else %}—{% endif %}
+                </td>
+                <td><strong>{{ g[5] or '—' }}</strong></td>
+                <td style="color:#8b949e; font-size:13px;">{{ g[6].strftime('%Y-%m-%d %H:%M') if g[6] else '—' }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="color:#8b949e; text-align:center; padding:20px;">No game history found.</p>
+        {% endif %}
+    </div>
+
+    <!-- Danger Zone -->
+    <div class="card" style="border-color: #da3633;">
+        <h4 style="color:#f85149;">⚠️ Danger Zone</h4>
+        <p style="color:#8b949e; font-size:14px;">This will permanently delete the user and all their data.</p>
+        <form method="POST" onsubmit="return confirm('Are you sure you want to delete {{ user[1] }}? This cannot be undone!')">
+            <input type="hidden" name="action" value="delete_user">
+            <button type="submit" class="btn btn-red">🗑️ Delete User {{ user[1] }}</button>
+        </form>
+    </div>
+</div>
+</body>
+</html>

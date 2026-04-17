@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-4">
+        <div class="card p-4">
+            <h3 class="text-center mb-4 text-warning">Admin Login</h3>
+            {% if error %}
+                <div class="alert alert-danger">{{ error }}</div>
+            {% endif %}
+            <form method="POST">
+                <div class="mb-3">
+                    <label>Admin Username</label>
+                    <input type="text" name="username" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label>Password</label>
+                    <input type="password" name="password" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn-warning w-100">Login as Admin</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

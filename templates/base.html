@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BET-PRO</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    {% block head_extra %}{% endblock %}
+    <style>
+        body { background-color: #0f172a; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; min-height: 100vh; }
+        .navbar { background-color: #1e293b; border-bottom: 2px solid #f59e0b; }
+        .navbar-brand { font-size: 1.4rem; color: #f59e0b !important; }
+        .nav-link { color: #cbd5e1 !important; transition: color 0.2s; }
+        .nav-link:hover { color: #f59e0b !important; }
+        .card { background-color: #1e293b; border: 1px solid #334155; color: white; border-radius: 15px; }
+        .btn-primary { background-color: #3b82f6; border: none; }
+        .btn-primary:hover { background-color: #2563eb; }
+        .btn-warning { background-color: #f59e0b; border: none; color: #0f172a; font-weight: bold; }
+        .btn-warning:hover { background-color: #d97706; color: #0f172a; }
+        .form-control, .form-select { background-color: #334155; border: 1px solid #475569; color: white; }
+        .form-control:focus, .form-select:focus { background-color: #334155; color: white; border-color: #f59e0b; box-shadow: none; }
+        .form-select option { background-color: #334155; }
+        .balance-display { background: linear-gradient(135deg, #f59e0b, #d97706); color: #0f172a; padding: 6px 16px; border-radius: 20px; font-weight: bold; font-size: 0.95rem; }
+        .table-dark { --bs-table-bg: #1e293b; --bs-table-hover-bg: #334155; }
+        .badge { font-size: 0.8rem; }
+        .alert { border-radius: 10px; }
+        /* FIX: Style logout as a link-looking button */
+        .logout-form { display: inline; margin: 0; padding: 0; }
+        .logout-btn-link { background: none; border: none; color: #ef4444 !important; font-weight: 500; cursor: pointer; padding: 0.5rem 0; font-size: 1rem; text-decoration: none; }
+        .logout-btn-link:hover { color: #f87171 !important; text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="/games">🎲 BET-PRO</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navMenu">
+                <div class="navbar-nav me-auto">
+                    {% if session.user %}
+                        <a class="nav-link" href="/games"><i class="fas fa-gamepad me-1"></i>Games</a>
+                        <a class="nav-link" href="/dashboard"><i class="fas fa-wallet me-1"></i>Deposit / Withdraw</a>
+                        <a class="nav-link" href="/history"><i class="fas fa-history me-1"></i>History</a>
+                        <a class="nav-link" href="/profile"><i class="fas fa-user me-1"></i>Profile</a>
+                    {% endif %}
+                </div>
+                <div class="navbar-nav ms-auto align-items-center">
+                    {% if session.user %}
+                        <span class="balance-display me-3">
+                            <i class="fas fa-coins me-1"></i>${{ balance if balance is defined else '0' }}
+                        </span>
+                        <!-- FIX: Logout is now POST to prevent CSRF -->
+                        <form action="/logout" method="POST" class="logout-form">
+                            <button type="submit" class="logout-btn-link nav-link">
+                                <i class="fas fa-sign-out-alt me-1"></i>Logout
+                            </button>
+                        </form>
+                    {% else %}
+                        <a class="nav-link" href="/">Login</a>
+                        <a class="nav-link" href="/register">Register</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
