@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    .game-card { border: 1px solid #334155; border-radius: 16px; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; }
+    .game-card:hover { transform: translateY(-4px); box-shadow: 0 8px 30px rgba(245, 158, 11, 0.2); border-color: #f59e0b; }
+    .game-icon { font-size: 3.5rem; }
+    .room-badge { font-size: 0.75rem; padding: 4px 10px; border-radius: 20px; }
+    .room-row { background: #1e293b; border-radius: 10px; padding: 12px 16px; margin-bottom: 8px; border: 1px solid #334155; }
+    .room-row:hover { border-color: #f59e0b; }
+    .bet-input { max-width: 160px; }
+    .section-title { color: #f59e0b; font-size: 1.1rem; font-weight: bold; border-bottom: 1px solid #334155; padding-bottom: 8px; margin-bottom: 16px; }
+    .live-card { background: radial-gradient(circle at top, rgba(59,130,246,0.2), rgba(15,23,42,0.98) 70%); min-height: 100%; }
+    .status-pill { border-radius: 999px; padding: 0.35rem 0.75rem; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; }
+</style>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <h3 class="fw-bold">Game Lobby</h3>
+        <p class="text-muted">Classic rooms stay available, and the new live multiplayer games keep running in automated rounds.</p>
+    </div>
+</div>
+
+<div class="section-title"><i class="fas fa-bolt me-2"></i>Live Multiplayer Games</div>
+<div class="row g-4 mb-5">
+    {% for game in live_games %}
+    <div class="col-lg-3 col-md-6">
+        <div class="card game-card live-card p-4">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div class="game-icon"><i class="fas {{ game.icon }}"></i></div>
+                <span class="status-pill {% if game.phase == 'betting' %}bg-success{% elif game.phase == 'running' %}bg-warning text-dark{% else %}bg-info text-dark{% endif %}">
+                    {{ game.phase }}
+                </span>
+            </div>
+            <h5 class="fw-bold">{{ game.title }}</h5>
+            <p class="text-muted small">{{ game.tagline }}</p>
+            <div class="small text-warning mb-1">Players this round: {{ game.player_count }}/{{ game.max_players }}</div>
+            <div class="small text-muted mb-3">{{ game.status_text }}</div>
+            <a href="/realtime/{{ game.slug }}" class="btn btn-warning w-100">Open Live Table</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="section-title"><i class="fas fa-door-open me-2"></i>Classic Rooms</div>
+<div class="row g-4 mb-5">
+    <div class="col-md-4">
+        <div class="card game-card p-4 text-center">
+            <div class="game-icon mb-2"><i class="fas fa-coins"></i></div>
+            <h5 class="fw-bold">Coin Flip</h5>
+            <p class="text-muted small">Pick heads or tails. Winners split the pot.</p>
+            <div class="mb-2 text-start"><small class="text-warning">Up to 10 players</small></div>
+            <form action="/game/coinflip/create" method="POST" class="d-flex gap-2 justify-content-center">
+                <input type="number" name="bet_amount" class="form-control bet-input" placeholder="Bet points" min="1" required>
+                <button class="btn btn-warning">Create Room</button>
+            </form>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card game-card p-4 text-center">
+            <div class="game-icon mb-2"><i class="fas fa-dice"></i></div>
+            <h5 class="fw-bold">Dice Roll</h5>
+            <p class="text-muted small">Guess the exact die result and split the winnings.</p>
+            <div class="mb-2 text-start"><small class="text-warning">Up to 10 players</small></div>
+            <form action="/game/dice/create" method="POST" class="d-flex gap-2 justify-content-center">
+                <input type="number" name="bet_amount" class="form-control bet-input" placeholder="Bet points" min="1" required>
+                <button class="btn btn-warning">Create Room</button>
+            </form>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card game-card p-4 text-center">
+            <div class="game-icon mb-2"><i class="fas fa-palette"></i></div>
+            <h5 class="fw-bold">Color Bet</h5>
+            <p class="text-muted small">Back a color and share the entire pool with other winners.</p>
+            <div class="mb-2 text-start"><small class="text-warning">Up to 10 players</small></div>
+            <form action="/game/colorbet/create" method="POST" class="d-flex gap-2 justify-content-center">
+                <input type="number" name="bet_amount" class="form-control bet-input" placeholder="Bet points" min="1" required>
+                <button class="btn btn-warning">Create Room</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        {% if rooms %}
+            {% for room in rooms %}
+            <div class="room-row d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-3">
+                    <span style="font-size:1.5rem;">
+                        {% if room[1] == 'coinflip' %}<i class="fas fa-coins"></i>
+                        {% elif room[1] == 'dice' %}<i class="fas fa-dice"></i>
+                        {% else %}<i class="fas fa-palette"></i>{% endif %}
+                    </span>
+                    <div>
+                        <div class="fw-bold text-capitalize">{{ room[1] }} - Room #{{ room[0] }}</div>
+                        <small class="text-muted">Bet: {{ room[3] }} pts | Players: {{ room[4] }}/10</small>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge {% if room[2] == 'waiting' %}bg-success{% else %}bg-warning text-dark{% endif %} room-badge">
+                        {{ room[2] }}
+                    </span>
+                    <a href="/game/room/{{ room[0] }}" class="btn btn-sm btn-warning">Join</a>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="text-center text-muted py-5">
+                <i class="fas fa-gamepad" style="font-size:3rem; opacity:0.3;"></i>
+                <p class="mt-3">No classic rooms are active right now. The live multiplayer games above are always cycling.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
