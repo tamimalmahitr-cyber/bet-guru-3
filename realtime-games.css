@@ -1,0 +1,284 @@
+.game-shell {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.game-hero {
+    padding: 1.75rem;
+    border-radius: 24px;
+    border: 1px solid rgba(148, 163, 184, 0.25);
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: start;
+}
+
+.theme-rocket { background: linear-gradient(135deg, rgba(12, 18, 46, 0.95), rgba(91, 33, 182, 0.5)); }
+.theme-wheel { background: linear-gradient(135deg, rgba(8, 47, 73, 0.95), rgba(22, 163, 74, 0.4)); }
+.theme-derby { background: linear-gradient(135deg, rgba(69, 26, 3, 0.95), rgba(16, 185, 129, 0.35)); }
+.theme-dice { background: linear-gradient(135deg, rgba(49, 46, 129, 0.95), rgba(37, 99, 235, 0.35)); }
+
+.eyebrow {
+    margin: 0 0 0.35rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: #fbbf24;
+}
+
+.hero-copy {
+    margin: 0.35rem 0 0;
+    max-width: 48rem;
+    color: #cbd5e1;
+}
+
+.hero-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(92px, 1fr));
+    gap: 0.75rem;
+}
+
+.metric-box,
+.panel,
+.player-card,
+.history-item {
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 18px;
+}
+
+.metric-box {
+    padding: 0.85rem 1rem;
+}
+
+.metric-box span,
+.timer-row span,
+.info-grid span {
+    display: block;
+    color: #94a3b8;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.metric-box strong,
+.timer-row strong,
+.info-grid strong {
+    font-size: 1.1rem;
+}
+
+.game-layout,
+.lower-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 1.5rem;
+}
+
+.lower-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.panel {
+    padding: 1.25rem;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: start;
+    margin-bottom: 1rem;
+}
+
+.panel-header h2 {
+    font-size: 1.15rem;
+    margin: 0;
+}
+
+.panel-header p,
+.status-text,
+.secondary-result {
+    color: #cbd5e1;
+}
+
+.rocket-stage,
+.wheel-wrapper,
+.track-board,
+.dice-board {
+    min-height: 280px;
+    display: grid;
+    place-items: center;
+    border-radius: 20px;
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    position: relative;
+    overflow: hidden;
+}
+
+.rocket-track {
+    position: absolute;
+    inset: 20px;
+    border-left: 2px dashed rgba(148, 163, 184, 0.4);
+}
+
+.rocket-ship {
+    position: absolute;
+    bottom: 28px;
+    left: 18%;
+    font-size: 3rem;
+    color: #f472b6;
+    transform: translateY(0);
+    transition: transform 0.2s linear;
+}
+
+.multiplier {
+    font-size: 3rem;
+    font-weight: 700;
+}
+
+.secondary-result {
+    margin-top: 1rem;
+    text-align: center;
+}
+
+.timer-row,
+.info-grid {
+    margin-top: 1rem;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.bet-form {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.bet-form input,
+.bet-form select {
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 14px;
+    color: #fff;
+    padding: 0.8rem 0.9rem;
+}
+
+.action-message {
+    min-height: 1.5rem;
+    margin-top: 0.75rem;
+    color: #fbbf24;
+}
+
+.player-list,
+.history-list {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.player-card,
+.history-item {
+    padding: 0.9rem 1rem;
+}
+
+.player-card strong,
+.history-item strong {
+    display: block;
+}
+
+.wheel-pointer {
+    position: absolute;
+    top: 12px;
+    width: 0;
+    height: 0;
+    border-left: 14px solid transparent;
+    border-right: 14px solid transparent;
+    border-top: 24px solid #f8fafc;
+    z-index: 2;
+}
+
+.fortune-wheel {
+    width: 240px;
+    height: 240px;
+    border-radius: 50%;
+    border: 8px solid rgba(248, 250, 252, 0.85);
+    background: conic-gradient(#ef4444 0deg 144deg, #3b82f6 144deg 252deg, #22c55e 252deg 324deg, #f59e0b 324deg 360deg);
+    transition: transform 0.8s ease-out;
+    position: relative;
+}
+
+.wheel-segment {
+    position: absolute;
+    inset: 50%;
+    transform-origin: 0 0;
+    font-weight: 700;
+}
+
+.wheel-segment.red { transform: rotate(35deg) translate(12px, -88px); }
+.wheel-segment.blue { transform: rotate(140deg) translate(12px, -88px); }
+.wheel-segment.green { transform: rotate(245deg) translate(12px, -88px); }
+.wheel-segment.gold { transform: rotate(320deg) translate(12px, -88px); }
+
+.track-board {
+    padding: 1rem;
+    gap: 0.5rem;
+}
+
+.track-lane {
+    position: relative;
+    width: 100%;
+    height: 28px;
+    border-radius: 999px;
+    background: rgba(30, 41, 59, 0.95);
+    overflow: hidden;
+}
+
+.track-horse {
+    position: absolute;
+    inset: 0 auto 0 0;
+    min-width: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #fb923c, #facc15);
+    color: #0f172a;
+    font-weight: 700;
+    transition: width 0.35s ease;
+}
+
+.dice-board {
+    display: flex;
+    gap: 1.2rem;
+}
+
+.die {
+    width: 110px;
+    height: 110px;
+    display: grid;
+    place-items: center;
+    border-radius: 24px;
+    background: linear-gradient(145deg, #f8fafc, #cbd5e1);
+    color: #0f172a;
+    font-size: 2.8rem;
+    font-weight: 800;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.35);
+}
+
+.history-item.win { border-color: rgba(34, 197, 94, 0.45); }
+.history-item.lost { border-color: rgba(239, 68, 68, 0.45); }
+.history-item.refund,
+.history-item.cashed_out { border-color: rgba(59, 130, 246, 0.45); }
+
+@media (max-width: 992px) {
+    .game-layout,
+    .lower-grid {
+        grid-template-columns: 1fr;
+    }
+    .game-hero {
+        flex-direction: column;
+    }
+    .hero-metrics {
+        width: 100%;
+    }
+}
