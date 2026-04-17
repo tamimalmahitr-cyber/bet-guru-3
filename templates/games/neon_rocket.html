@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/realtime-games.css') }}">
+{% endblock %}
+{% block content %}
+<div class="game-shell" data-game-page data-game-slug="{{ game.slug }}" data-supports-cashout="{{ 'true' if snapshot.supports_cashout else 'false' }}">
+    <div class="game-hero theme-rocket">
+        <div>
+            <p class="eyebrow">Realtime Multiplayer</p>
+            <h1>{{ game.title }}</h1>
+            <p class="hero-copy">{{ game.tagline }}</p>
+        </div>
+        <div class="hero-metrics">
+            <div class="metric-box"><span>Phase</span><strong id="phase-label">{{ snapshot.phase }}</strong></div>
+            <div class="metric-box"><span>Wallet</span><strong id="wallet-balance">{{ snapshot.wallet_balance }}</strong></div>
+            <div class="metric-box"><span>Players</span><strong id="player-count">{{ snapshot.player_count or 0 }}</strong></div>
+        </div>
+    </div>
+
+    <div class="game-layout">
+        <section class="panel visual-panel">
+            <div class="panel-header">
+                <h2>Flight Deck</h2>
+                <div class="status-text" id="status-text">{{ snapshot.state.status_text or 'Waiting for next launch' }}</div>
+            </div>
+            <div class="rocket-stage">
+                <div class="rocket-track"></div>
+                <div class="rocket-ship" id="rocket-ship"><i class="fas fa-rocket"></i></div>
+                <div class="multiplier" id="primary-result">{{ snapshot.state.multiplier or 1.0 }}x</div>
+                <div class="secondary-result" id="secondary-result">Crash point hidden until impact</div>
+            </div>
+            <div class="timer-row">
+                <div><span>Countdown</span><strong id="countdown">-</strong></div>
+                <div><span>Live Multiplier</span><strong id="live-multiplier">{{ snapshot.state.multiplier or 1.0 }}x</strong></div>
+            </div>
+        </section>
+
+        <section class="panel bet-panel">
+            <div class="panel-header">
+                <h2>Bet Panel</h2>
+                <p>One launch ticket per round. Cash out before the crash.</p>
+            </div>
+            <form id="bet-form" class="bet-form">
+                <input type="hidden" name="choice" value="launch">
+                <label>Bet Amount</label>
+                <input type="number" name="amount" min="1" value="50" required>
+                <button type="submit" class="btn btn-warning w-100">Place Launch Bet</button>
+            </form>
+            <button id="cashout-button" class="btn btn-danger w-100 mt-3 d-none">Cash Out Now</button>
+            <div id="action-message" class="action-message"></div>
+            <div class="info-grid">
+                <div><span>Rules</span><strong>Server decides crash point</strong></div>
+                <div><span>Window</span><strong>{{ game.betting_window }}s betting phase</strong></div>
+            </div>
+        </section>
+    </div>
+
+    <div class="lower-grid">
+        <section class="panel">
+            <div class="panel-header"><h2>Players In Round</h2></div>
+            <div id="players-list" class="player-list"></div>
+        </section>
+        <section class="panel">
+            <div class="panel-header"><h2>Your Recent Results</h2></div>
+            <div id="my-history" class="history-list" data-history='{{ my_history|tojson|safe }}'></div>
+        </section>
+        <section class="panel">
+            <div class="panel-header"><h2>Global Feed</h2></div>
+            <div id="recent-history" class="history-list" data-history='{{ recent_history|tojson|safe }}'></div>
+        </section>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+window.GAME_PAGE_CONFIG = {
+    slug: "{{ game.slug }}",
+    title: "{{ game.title }}",
+    supportsCashout: true,
+    initialState: {{ snapshot|tojson|safe }}
+};
+</script>
+<script src="{{ url_for('static', filename='js/realtime_game.js') }}"></script>
+{% endblock %}
