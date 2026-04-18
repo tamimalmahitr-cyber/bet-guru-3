@@ -2,12 +2,14 @@ from datetime import datetime, timedelta
 import json
 import os
 import random
+import sqlite3
 import threading
 
 from flask import Flask, flash, jsonify, redirect, render_template, request, session, url_for
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import CheckConstraint, UniqueConstraint, case, func
+from sqlalchemy import CheckConstraint, UniqueConstraint, case, event, func
+from sqlalchemy.engine import Engine
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from realtime_games import build_game_registry
@@ -35,9 +37,26 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_pre_ping": True,
     "pool_recycle": 300,
 }
+if app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite"):
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"]["connect_args"] = {
+        "check_same_thread": False,
+        "timeout": 30,
+    }
 
 db = SQLAlchemy(app)
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
+
+
+@event.listens_for(Engine, "connect")
+def configure_sqlite_pragmas(dbapi_connection, connection_record):
+    if not isinstance(dbapi_connection, sqlite3.Connection):
+        return
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys = ON")
+    cursor.execute("PRAGMA journal_mode = WAL")
+    cursor.execute("PRAGMA synchronous = NORMAL")
+    cursor.execute("PRAGMA busy_timeout = 30000")
+    cursor.close()
 
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
@@ -462,15 +481,21 @@ def realtime_game(game_slug):
         flash("Game not found.", "danger")
         return redirect("/games")
 
-    config = REALTIME_GAME_LOOKUP[game_slug]
-    return render_template(
-        config["template"],
-        balance=get_balance(session["user"]),
-        game=config,
-        snapshot=current_game_snapshot(game_slug),
-        recent_history=recent_game_history(game_slug),
-        my_history=my_game_history(game_slug, session["user"]),
-    )
+    try:
+        config = REALTIME_GAME_LOOKUP[game_slug]
+        return render_template(
+            config["template"],
+            balance=get_balance(session["user"]),
+            game=config,
+            snapshot=current_game_snapshot(game_slug),
+            recent_history=recent_game_history(game_slug),
+            my_history=my_game_history(game_slug, session["user"]),
+        )
+    except Exception as e:
+        db.session.rollback()
+        app.logger.exception("Failed to open realtime game %s: %s", game_slug, e)
+        flash("The live table is temporarily unavailable. Please try again.", "danger")
+        return redirect("/games")
 
 
 @app.route("/api/realtime/<game_slug>/state")
@@ -479,7 +504,12 @@ def realtime_state(game_slug):
         return jsonify({"ok": False, "message": "Login required."}), 401
     if game_slug not in REALTIME_GAME_LOOKUP:
         return jsonify({"ok": False, "message": "Unknown game."}), 404
-    return jsonify({"ok": True, "state": current_game_snapshot(game_slug)})
+    try:
+        return jsonify({"ok": True, "state": current_game_snapshot(game_slug)})
+    except Exception as e:
+        db.session.rollback()
+        app.logger.exception("Failed to load realtime state for %s: %s", game_slug, e)
+        return jsonify({"ok": False, "message": "Unable to load live state right now."}), 503
 
 
 @app.route("/api/realtime/<game_slug>/bet", methods=["POST"])
@@ -496,24 +526,38 @@ def realtime_bet(game_slug):
         return jsonify({"ok": False, "message": "Invalid bet amount."}), 400
     choice = (payload.get("choice") or "").strip().lower()
 
-    ok, message = realtime_games[game_slug].place_bet(session["user"], amount, choice, extra={})
-    status_code = 200 if ok else 400
-    return jsonify(
-        {
-            "ok": ok,
-            "message": message,
-            "balance": get_balance(session["user"]),
-            "history": my_game_history(game_slug, session["user"]),
-        }
-    ), status_code
+    try:
+        ok, message = realtime_games[game_slug].place_bet(
+            session["user"], amount, choice, extra={}
+        )
+        status_code = 200 if ok else 400
+        return jsonify(
+            {
+                "ok": ok,
+                "message": message,
+                "balance": get_balance(session["user"]),
+                "history": my_game_history(game_slug, session["user"]),
+            }
+        ), status_code
+    except Exception as e:
+        db.session.rollback()
+        app.logger.exception("Failed to place realtime bet for %s: %s", game_slug, e)
+        return jsonify({"ok": False, "message": "Unable to place bet right now."}), 503
 
 
 @app.route("/api/realtime/neon-rocket/cashout", methods=["POST"])
 def realtime_cashout():
     if "user" not in session:
         return jsonify({"ok": False, "message": "Login required."}), 401
-    ok, message = realtime_games["neon-rocket"].cash_out(session["user"])
-    return jsonify({"ok": ok, "message": message, "balance": get_balance(session["user"])}), (200 if ok else 400)
+    try:
+        ok, message = realtime_games["neon-rocket"].cash_out(session["user"])
+        return jsonify(
+            {"ok": ok, "message": message, "balance": get_balance(session["user"])}
+        ), (200 if ok else 400)
+    except Exception as e:
+        db.session.rollback()
+        app.logger.exception("Failed to cash out neon rocket bet: %s", e)
+        return jsonify({"ok": False, "message": "Unable to cash out right now."}), 503
 
 
 def create_room(game_type):
@@ -1091,8 +1135,13 @@ def socket_join_game(data):
     if game_slug not in REALTIME_GAME_LOOKUP:
         emit("error_message", {"message": "Unknown game room."})
         return
-    join_room(f"game:{game_slug}")
-    emit("round_state", current_game_snapshot(game_slug))
+    try:
+        join_room(f"game:{game_slug}")
+        emit("round_state", current_game_snapshot(game_slug))
+    except Exception as e:
+        db.session.rollback()
+        app.logger.exception("Socket join failed for %s: %s", game_slug, e)
+        emit("error_message", {"message": "Unable to join the live game right now."})
 
 
 @socketio.on("leave_game")
