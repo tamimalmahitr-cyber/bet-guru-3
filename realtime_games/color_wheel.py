@@ -30,8 +30,11 @@ class ColorWheelGame(BaseRealtimeGame):
                 state = json.loads(game_round.state_json or "{}")
                 state["wheel_angle"] = angle
                 state["status_text"] = "Wheel spinning"
-                self._update_round_state(game_round, state=state)
-                self.emit_state(extra={"phase": "running", "wheel_angle": angle})
+                self._update_round_state(game_round, state=state, persist=False)
+                self.emit_state(
+                    extra={"phase": "running", "wheel_angle": angle},
+                    refresh_players=False,
+                )
             time.sleep(self.running_duration / 16)
 
     def finish_round(self, game_round):
