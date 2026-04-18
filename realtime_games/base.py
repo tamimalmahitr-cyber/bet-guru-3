@@ -31,12 +31,34 @@ class BaseRealtimeGame:
         self.current_round_id = None
         self.current_state = {"phase": "booting"}
         self._started = False
+        self._thread = None
 
     def start(self):
-        if self._started:
-            return
-        self._started = True
-        self.socketio.start_background_task(self._game_loop)
+        with self.lock:
+            if self._thread and self._thread.is_alive():
+                self._started = True
+                return
+            self._thread = threading.Thread(
+                target=self._game_loop,
+                name=f"rt-game-{self.slug}",
+                daemon=True,
+            )
+            self._thread.start()
+            self._started = True
+
+    def safe_json_loads(self, raw_value, default=None):
+        fallback = {} if default is None else default
+        if raw_value in (None, ""):
+            return deepcopy(fallback)
+        try:
+            return json.loads(raw_value)
+        except (TypeError, ValueError, json.JSONDecodeError) as exc:
+            self.app.logger.warning(
+                "Invalid JSON payload for %s realtime state: %s",
+                self.slug,
+                exc,
+            )
+            return deepcopy(fallback)
 
     def serialize_bet(self, bet):
         return {
@@ -63,7 +85,7 @@ class BaseRealtimeGame:
             if game_round.running_started_at
             else None,
             "result_at": game_round.result_at.isoformat() if game_round.result_at else None,
-            "state": json.loads(game_round.state_json or "{}"),
+            "state": self.safe_json_loads(game_round.state_json),
         }
         if extra:
             payload.update(extra)
@@ -108,6 +130,42 @@ class BaseRealtimeGame:
         if self.current_round_id is None:
             return None
         return self.models["GameRound"].query.get(self.current_round_id)
+
+    def _load_latest_open_round(self):
+        GameRound = self.models["GameRound"]
+        latest_open = (
+            GameRound.query.filter(
+                GameRound.game_slug == self.slug,
+                GameRound.phase.in_(("betting", "running")),
+            )
+            .order_by(GameRound.id.desc())
+            .first()
+        )
+        if latest_open:
+            self.current_round_id = latest_open.id
+            self._replace_snapshot(
+                latest_open,
+                players=self.list_players(latest_open.id),
+            )
+        return latest_open
+
+    def ensure_active_round(self):
+        self.start()
+        with self.lock, self.app.app_context():
+            game_round = self.get_current_round()
+            if game_round:
+                self._replace_snapshot(
+                    game_round,
+                    players=self.list_players(game_round.id),
+                )
+                return game_round
+            game_round = self._load_latest_open_round()
+            if game_round:
+                return game_round
+            seed_state = self.seed_state()
+            game_round = self._create_round_record(seed_state)
+            self.emit_state(refresh_players=False)
+            return game_round
 
     def _create_round_record(self, seed_state):
         GameRound = self.models["GameRound"]
@@ -167,6 +225,7 @@ class BaseRealtimeGame:
 
     def place_bet(self, username, amount, choice, extra=None):
         with self.lock, self.app.app_context():
+            self.ensure_active_round()
             game_round = self.get_current_round()
             GameBet = self.models["GameBet"]
             if not game_round or game_round.phase != "betting":
@@ -280,36 +339,63 @@ class BaseRealtimeGame:
             )
             time.sleep(1)
 
+    def _seconds_until(self, target_time):
+        if not target_time:
+            return 0
+        remaining = int((target_time - datetime.utcnow()).total_seconds())
+        return max(0, remaining)
+
     def _game_loop(self):
         while True:
             try:
                 with self.lock, self.app.app_context():
-                    seed_state = self.seed_state()
-                    game_round = self._create_round_record(seed_state)
-                self.sleep_and_emit_countdown(self.betting_duration, "betting")
+                    game_round = self.get_current_round() or self._load_latest_open_round()
+                    if not game_round:
+                        seed_state = self.seed_state()
+                        game_round = self._create_round_record(seed_state)
+                    elif game_round.phase == "result":
+                        self.current_round_id = None
+                        continue
+                if game_round.phase == "betting":
+                    remaining = self._seconds_until(game_round.betting_ends_at)
+                    if remaining > 0:
+                        self.sleep_and_emit_countdown(remaining, "betting")
                 with self.lock, self.app.app_context():
                     game_round = self.get_current_round()
                     if not game_round:
-                        continue
-                    state = json.loads(game_round.state_json or "{}")
-                    self._update_round_state(
-                        game_round, phase="running", state=state, running=True
-                    )
-                self.run_live_round()
+                        game_round = self.ensure_active_round()
+                    if game_round.phase == "betting":
+                        state = self.safe_json_loads(game_round.state_json)
+                        self._update_round_state(
+                            game_round, phase="running", state=state, running=True
+                        )
+                if game_round.phase in ("betting", "running"):
+                    self.run_live_round()
                 with self.lock, self.app.app_context():
                     game_round = self.get_current_round()
                     if not game_round:
-                        continue
-                    result_payload = self.finish_round(game_round)
-                    self._update_round_state(
-                        game_round,
-                        phase="result",
-                        state=result_payload,
-                        result=True,
-                    )
-                    self.settle_round(game_round, result_payload)
-                    self.emit_state(extra={"result": result_payload, "phase": "result"})
-                time.sleep(self.result_duration)
+                        game_round = self.ensure_active_round()
+                    if game_round.phase != "result":
+                        result_payload = self.finish_round(game_round)
+                        self._update_round_state(
+                            game_round,
+                            phase="result",
+                            state=result_payload,
+                            result=True,
+                        )
+                        self.settle_round(game_round, result_payload)
+                        self.emit_state(extra={"result": result_payload, "phase": "result"})
+                with self.lock, self.app.app_context():
+                    game_round = self.get_current_round()
+                    wait_seconds = self.result_duration
+                    if game_round and game_round.result_at:
+                        elapsed = int((datetime.utcnow() - game_round.result_at).total_seconds())
+                        wait_seconds = max(0, self.result_duration - elapsed)
+                if wait_seconds > 0:
+                    time.sleep(wait_seconds)
+                with self.lock:
+                    self.current_round_id = None
+                    self.current_state = {"phase": "booting"}
             except Exception as exc:
                 self.db.session.rollback()
                 self.app.logger.exception("Realtime game loop failed for %s: %s", self.slug, exc)
@@ -322,4 +408,4 @@ class BaseRealtimeGame:
         time.sleep(self.running_duration)
 
     def finish_round(self, game_round):
-        return json.loads(game_round.state_json or "{}")
+        return self.safe_json_loads(game_round.state_json)
