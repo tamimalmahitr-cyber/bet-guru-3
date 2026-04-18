@@ -33,7 +33,7 @@ class NeonRocketGame(BaseRealtimeGame):
                 game_round = self.get_current_round()
                 if not game_round:
                     return
-                state = json.loads(game_round.state_json or "{}")
+                state = self.safe_json_loads(game_round.state_json)
                 state["multiplier"] = multiplier
                 state["elapsed"] = round(elapsed, 2)
                 state["status_text"] = "Rocket climbing"
@@ -53,7 +53,7 @@ class NeonRocketGame(BaseRealtimeGame):
             with self.lock, self.app.app_context():
                 game_round = self.get_current_round()
                 if game_round:
-                    state = json.loads(game_round.state_json or "{}")
+                    state = self.safe_json_loads(game_round.state_json)
                     state["status_text"] = "Rocket escaped orbit"
                     self._update_round_state(game_round, state=state, persist=False)
 
@@ -70,7 +70,7 @@ class NeonRocketGame(BaseRealtimeGame):
                 return False, "No active rocket bet found."
             state = dict(self.current_state.get("state") or {})
             if not state:
-                state = json.loads(game_round.state_json or "{}")
+                state = self.safe_json_loads(game_round.state_json)
             current_multiplier = state.get("multiplier", 1.0)
             crash_point = state.get("crash_point", 1.0)
             if current_multiplier >= crash_point:
@@ -105,7 +105,7 @@ class NeonRocketGame(BaseRealtimeGame):
             return True, f"Cashed out at {current_multiplier}x."
 
     def finish_round(self, game_round):
-        state = json.loads(game_round.state_json or "{}")
+        state = self.safe_json_loads(game_round.state_json)
         return {
             "crash_point": state.get("crash_point", 1.0),
             "multiplier": state.get("crash_point", 1.0),
