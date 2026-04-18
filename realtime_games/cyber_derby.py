@@ -49,8 +49,11 @@ class CyberDerbyGame(BaseRealtimeGame):
                         winner = horse
                 state["winner"] = winner
                 state["status_text"] = "Race in progress"
-                self._update_round_state(game_round, state=state)
-                self.emit_state(extra={"phase": "running", "positions": state["positions"]})
+                self._update_round_state(game_round, state=state, persist=False)
+                self.emit_state(
+                    extra={"phase": "running", "positions": state["positions"]},
+                    refresh_players=False,
+                )
             time.sleep(0.45)
 
     def finish_round(self, game_round):
