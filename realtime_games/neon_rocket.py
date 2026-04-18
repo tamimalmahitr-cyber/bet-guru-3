@@ -37,12 +37,15 @@ class NeonRocketGame(BaseRealtimeGame):
                 state["multiplier"] = multiplier
                 state["elapsed"] = round(elapsed, 2)
                 state["status_text"] = "Rocket climbing"
-                self._update_round_state(game_round, state=state)
-                self.emit_state(extra={"phase": "running", "live_multiplier": multiplier})
+                self._update_round_state(game_round, state=state, persist=False)
+                self.emit_state(
+                    extra={"phase": "running", "live_multiplier": multiplier},
+                    refresh_players=False,
+                )
                 if multiplier >= state["crash_point"]:
                     state["multiplier"] = state["crash_point"]
                     state["status_text"] = "Rocket crashed"
-                    self._update_round_state(game_round, state=state)
+                    self._update_round_state(game_round, state=state, persist=False)
                     crashed = True
                     break
             time.sleep(0.25)
@@ -52,7 +55,7 @@ class NeonRocketGame(BaseRealtimeGame):
                 if game_round:
                     state = json.loads(game_round.state_json or "{}")
                     state["status_text"] = "Rocket escaped orbit"
-                    self._update_round_state(game_round, state=state)
+                    self._update_round_state(game_round, state=state, persist=False)
 
     def cash_out(self, username, auto_target=None):
         with self.lock, self.app.app_context():
@@ -65,7 +68,9 @@ class NeonRocketGame(BaseRealtimeGame):
             ).first()
             if not bet:
                 return False, "No active rocket bet found."
-            state = json.loads(game_round.state_json or "{}")
+            state = dict(self.current_state.get("state") or {})
+            if not state:
+                state = json.loads(game_round.state_json or "{}")
             current_multiplier = state.get("multiplier", 1.0)
             crash_point = state.get("crash_point", 1.0)
             if current_multiplier >= crash_point:
