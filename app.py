@@ -289,8 +289,14 @@ def init_db():
         app.logger.info("Database initialized successfully.")
 
 
+def ensure_realtime_games_running():
+    for engine in realtime_games.values():
+        engine.start()
+
+
 @app.before_request
 def keep_wallet_in_sync():
+    ensure_realtime_games_running()
     if "user" not in session:
         return None
     user = User.query.filter_by(username=session["user"]).first()
@@ -303,12 +309,24 @@ def keep_wallet_in_sync():
 
 def current_game_snapshot(game_slug):
     engine = realtime_games[game_slug]
+    engine.ensure_active_round()
     snapshot = engine.get_public_snapshot()
     snapshot["wallet_balance"] = get_balance(session["user"]) if "user" in session else 0
     snapshot["choices"] = engine.choices
     snapshot["supports_cashout"] = engine.supports_cashout
     snapshot["game"] = REALTIME_GAME_LOOKUP[game_slug]
     return snapshot
+
+
+def safe_json_loads(raw_value, default=None):
+    fallback = {} if default is None else default
+    if raw_value in (None, ""):
+        return fallback.copy() if isinstance(fallback, dict) else fallback
+    try:
+        return json.loads(raw_value)
+    except (TypeError, ValueError, json.JSONDecodeError) as exc:
+        app.logger.warning("Invalid JSON payload in realtime history: %s", exc)
+        return fallback.copy() if isinstance(fallback, dict) else fallback
 
 
 def recent_game_history(game_slug, limit=12):
@@ -324,7 +342,7 @@ def recent_game_history(game_slug, limit=12):
             "amount": row.amount,
             "payout": row.payout,
             "outcome": row.outcome,
-            "details": json.loads(row.details_json or "{}"),
+            "details": safe_json_loads(row.details_json),
             "created_at": row.created_at.strftime("%H:%M:%S"),
         }
         for row in rows
@@ -343,7 +361,7 @@ def my_game_history(game_slug, username, limit=10):
             "amount": row.amount,
             "payout": row.payout,
             "outcome": row.outcome,
-            "details": json.loads(row.details_json or "{}"),
+            "details": safe_json_loads(row.details_json),
             "created_at": row.created_at.strftime("%Y-%m-%d %H:%M:%S"),
         }
         for row in rows
@@ -1124,6 +1142,7 @@ def admin_all_transactions():
 
 @socketio.on("connect")
 def socket_connected():
+    ensure_realtime_games_running()
     if "user" in session:
         join_room(f"user:{session['user']}")
     emit("connected", {"ok": True, "message": "Socket connected."})
