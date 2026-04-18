@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skyburst Crash</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="page-shell">
+        <header class="topbar">
+            <div>
+                <p class="eyebrow">Realtime Multiplayer Crash Game</p>
+                <h1>Skyburst Crash</h1>
+                <p class="subtitle">Place your bet during the countdown and cash out before the flight breaks apart.</p>
+            </div>
+            <div class="topbar-card">
+                <span class="label">Balance</span>
+                <strong id="balance-display">0.00</strong>
+            </div>
+        </header>
+
+        <main class="layout">
+            <section class="arena-card">
+                <div class="arena-status">
+                    <div>
+                        <span class="label">Round State</span>
+                        <strong id="round-state">WAITING</strong>
+                    </div>
+                    <div>
+                        <span class="label">Countdown</span>
+                        <strong id="countdown-display">--</strong>
+                    </div>
+                    <div>
+                        <span class="label">Seed Hash</span>
+                        <strong id="seed-hash">--</strong>
+                    </div>
+                </div>
+
+                <div class="flight-stage" id="flight-stage">
+                    <div class="track-grid"></div>
+                    <div class="plane-wrapper" id="plane-wrapper">
+                        <div class="plane-glow"></div>
+                        <div class="plane-body">✈</div>
+                    </div>
+                    <div class="explosion" id="explosion"></div>
+                    <div class="multiplier-display" id="multiplier-display">1.00x</div>
+                    <div class="multiplier-subtext" id="multiplier-subtext">Waiting for the next launch</div>
+                </div>
+
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h2>Round History</h2>
+                        <span>Last 10 crash points</span>
+                    </div>
+                    <div class="history-chart" id="history-chart"></div>
+                    <div class="history-pills" id="history-pills"></div>
+                </div>
+            </section>
+
+            <aside class="control-card">
+                <div class="panel">
+                    <div class="panel-heading">
+                        <h2>Player Panel</h2>
+                        <p id="username-display">Not connected</p>
+                    </div>
+                    <div class="input-stack">
+                        <label for="bet-amount">Bet Amount</label>
+                        <input id="bet-amount" type="number" min="1" step="1" value="25">
+                    </div>
+                    <div class="input-stack">
+                        <label for="auto-cashout">Auto Cash Out</label>
+                        <input id="auto-cashout" type="number" min="1.10" max="20.00" step="0.10" placeholder="Optional">
+                    </div>
+                    <div class="button-row">
+                        <button id="place-bet-btn" class="primary-btn">Place Bet</button>
+                        <button id="cash-out-btn" class="danger-btn" disabled>Cash Out</button>
+                    </div>
+                    <div class="notice-bar" id="notice-bar">Join the table to begin.</div>
+                    <div class="bet-summary" id="bet-summary">
+                        <div>
+                            <span class="label">Active Bet</span>
+                            <strong id="active-bet-display">None</strong>
+                        </div>
+                        <div>
+                            <span class="label">Auto Cash Out</span>
+                            <strong id="active-auto-display">--</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-heading">
+                        <h2>Live Players</h2>
+                        <p>Up to 10 players each round</p>
+                    </div>
+                    <div class="player-list" id="player-list"></div>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <div class="join-modal" id="join-modal">
+        <div class="join-card">
+            <p class="eyebrow">Enter Table</p>
+            <h2>Choose a username</h2>
+            <input id="username-input" type="text" maxlength="20" placeholder="Your name">
+            <button id="join-btn" class="primary-btn full-btn">Join Game</button>
+            <p class="join-help">A new player starts with 1000 credits. Existing names keep their saved balance.</p>
+        </div>
+    </div>
+
+    <div class="toast hidden" id="result-toast"></div>
+
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
