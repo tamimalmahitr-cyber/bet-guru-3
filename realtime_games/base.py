@@ -2,9 +2,11 @@ import json
 import threading
 import time
 import uuid
+from copy import deepcopy
 from datetime import datetime
 
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 
 class BaseRealtimeGame:
@@ -67,15 +69,22 @@ class BaseRealtimeGame:
             payload.update(extra)
         return payload
 
-    def emit_state(self, event="round_state", extra=None):
+    def _replace_snapshot(self, game_round, *, extra=None, players=None):
+        payload = self.serialize_round(game_round, extra=extra)
+        if players is None:
+            players = self.current_state.get("players", [])
+        payload["players"] = players
+        payload["player_count"] = len(players)
+        self.current_state = payload
+        return payload
+
+    def emit_state(self, event="round_state", extra=None, refresh_players=True):
         with self.app.app_context():
             game_round = self.get_current_round()
             if not game_round:
                 return
-            payload = self.serialize_round(game_round, extra=extra)
-            payload["players"] = self.list_players(game_round.id)
-            payload["player_count"] = len(payload["players"])
-            self.current_state = payload
+            players = self.list_players(game_round.id) if refresh_players else None
+            payload = self._replace_snapshot(game_round, extra=extra, players=players)
             self.socketio.emit(event, payload, room=self.room_name)
 
     def emit_wallet(self, username):
@@ -114,9 +123,19 @@ class BaseRealtimeGame:
         self.db.session.add(game_round)
         self.db.session.commit()
         self.current_round_id = game_round.id
+        self._replace_snapshot(game_round, players=[])
         return game_round
 
-    def _update_round_state(self, game_round, *, phase=None, state=None, running=False, result=False):
+    def _update_round_state(
+        self,
+        game_round,
+        *,
+        phase=None,
+        state=None,
+        running=False,
+        result=False,
+        persist=True,
+    ):
         if phase:
             game_round.phase = phase
         if state is not None:
@@ -125,7 +144,9 @@ class BaseRealtimeGame:
             game_round.running_started_at = datetime.utcnow()
         if result:
             game_round.result_at = datetime.utcnow()
-        self.db.session.commit()
+        if persist:
+            self.db.session.commit()
+        self._replace_snapshot(game_round)
 
     def _refund_bet(self, bet, reason):
         self.helpers["adjust_balance"](bet.username, bet.amount, reason=reason)
@@ -182,7 +203,23 @@ class BaseRealtimeGame:
                 status="placed",
             )
             self.db.session.add(bet)
-            self.db.session.commit()
+            try:
+                self.db.session.commit()
+            except IntegrityError:
+                self.db.session.rollback()
+                self.helpers["adjust_balance"](
+                    username, amount, reason=f"{self.slug}:bet-refund"
+                )
+                return False, "You already placed a bet this round."
+            except SQLAlchemyError as exc:
+                self.db.session.rollback()
+                self.helpers["adjust_balance"](
+                    username, amount, reason=f"{self.slug}:bet-refund"
+                )
+                self.app.logger.exception(
+                    "Failed to place bet for %s in %s: %s", username, self.slug, exc
+                )
+                return False, "Unable to place the bet right now. Please try again."
             self.on_bet_placed(game_round, bet)
             self.emit_wallet(username)
             self.emit_state("bet_update")
@@ -225,7 +262,7 @@ class BaseRealtimeGame:
         raise NotImplementedError
 
     def get_public_snapshot(self):
-        return self.current_state
+        return deepcopy(self.current_state)
 
     def get_player_view(self, username):
         snapshot = dict(self.current_state)
@@ -237,7 +274,10 @@ class BaseRealtimeGame:
 
     def sleep_and_emit_countdown(self, duration, phase):
         for remaining in range(duration, 0, -1):
-            self.emit_state(extra={"countdown": remaining, "phase": phase})
+            self.emit_state(
+                extra={"countdown": remaining, "phase": phase},
+                refresh_players=False,
+            )
             time.sleep(1)
 
     def _game_loop(self):
@@ -271,6 +311,7 @@ class BaseRealtimeGame:
                     self.emit_state(extra={"result": result_payload, "phase": "result"})
                 time.sleep(self.result_duration)
             except Exception as exc:
+                self.db.session.rollback()
                 self.app.logger.exception("Realtime game loop failed for %s: %s", self.slug, exc)
                 time.sleep(2)
 
