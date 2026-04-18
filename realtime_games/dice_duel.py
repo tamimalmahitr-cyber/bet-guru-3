@@ -31,8 +31,11 @@ class DiceDuelGame(BaseRealtimeGame):
                 state = json.loads(game_round.state_json or "{}")
                 state["dice"] = [random.randint(1, 6), random.randint(1, 6)]
                 state["status_text"] = "Dice rolling"
-                self._update_round_state(game_round, state=state)
-                self.emit_state(extra={"phase": "running", "dice": state["dice"]})
+                self._update_round_state(game_round, state=state, persist=False)
+                self.emit_state(
+                    extra={"phase": "running", "dice": state["dice"]},
+                    refresh_players=False,
+                )
             time.sleep(self.running_duration / 10)
 
     def finish_round(self, game_round):
