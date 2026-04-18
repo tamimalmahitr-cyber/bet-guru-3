@@ -28,7 +28,7 @@ class DiceDuelGame(BaseRealtimeGame):
                 game_round = self.get_current_round()
                 if not game_round:
                     return
-                state = json.loads(game_round.state_json or "{}")
+                state = self.safe_json_loads(game_round.state_json)
                 state["dice"] = [random.randint(1, 6), random.randint(1, 6)]
                 state["status_text"] = "Dice rolling"
                 self._update_round_state(game_round, state=state, persist=False)
@@ -39,7 +39,7 @@ class DiceDuelGame(BaseRealtimeGame):
             time.sleep(self.running_duration / 10)
 
     def finish_round(self, game_round):
-        state = json.loads(game_round.state_json or "{}")
+        state = self.safe_json_loads(game_round.state_json)
         total = state["sum"]
         if 2 <= total <= 6:
             outcome = "low"
