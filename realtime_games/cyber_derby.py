@@ -39,7 +39,7 @@ class CyberDerbyGame(BaseRealtimeGame):
                 game_round = self.get_current_round()
                 if not game_round:
                     return
-                state = json.loads(game_round.state_json or "{}")
+                state = self.safe_json_loads(game_round.state_json)
                 for horse in self.choices:
                     increment = random.uniform(2.5, 8.0) * self.horse_weights[horse]
                     state["positions"][horse] = min(
@@ -57,7 +57,7 @@ class CyberDerbyGame(BaseRealtimeGame):
             time.sleep(0.45)
 
     def finish_round(self, game_round):
-        state = json.loads(game_round.state_json or "{}")
+        state = self.safe_json_loads(game_round.state_json)
         return {
             "winner": state["winner"],
             "positions": state["positions"],
